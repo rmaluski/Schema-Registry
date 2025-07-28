@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     # Cache
     cache_ttl_seconds: int = 600  # 10 minutes
     
+    # Redis (optional)
+    redis_url: Optional[str] = None
+    
+    # Rate limiting
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 3600  # 1 hour
+    
+    # Security
+    enable_auth: bool = False
+    enable_rate_limiting: bool = True
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

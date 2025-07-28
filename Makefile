@@ -77,6 +77,26 @@ test-api: ## Test API endpoints
 	curl -X POST "http://localhost:8000/schema/ticks_v1/compat" \
 		-H "Content-Type: application/json" \
 		-d '{"data": {"ts": "2023-01-01T10:00:00Z", "symbol": "AAPL", "price": 150.50, "size": 100, "side": "B"}}' | jq .
+	@echo "\n5. Cache stats:"
+	curl -s http://localhost:8000/cache/stats | jq .
+	@echo "\n6. WebSocket stats:"
+	curl -s http://localhost:8000/ws/stats | jq .
+	@echo "\n7. GraphQL query:"
+	curl -X POST "http://localhost:8000/graphql" \
+		-H "Content-Type: application/json" \
+		-d '{"query": "query { schemas { id title version } }"}' | jq .
+
+test-enhanced-client: ## Test enhanced client
+	@echo "Testing enhanced client..."
+	python examples/enhanced_client.py
+
+test-websocket: ## Test WebSocket connections
+	@echo "Testing WebSocket connections..."
+	@echo "Connecting to schema updates channel..."
+	websocat ws://localhost:8000/ws/schema-updates -H "Content-Type: application/json" &
+	@echo "Connecting to compatibility alerts channel..."
+	websocat ws://localhost:8000/ws/compatibility-alerts -H "Content-Type: application/json" &
+	@echo "WebSocket connections established. Press Ctrl+C to stop."
 
 setup-monitoring: ## Setup monitoring directories
 	mkdir -p monitoring/grafana/dashboards

@@ -29,14 +29,26 @@ services:
     environment:
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
+      - REDIS_URL=redis://redis:6379/0
       - API_HOST=0.0.0.0
       - API_PORT=8000
       - DEBUG=true
       - LOG_LEVEL=DEBUG
+      - ENABLE_RATE_LIMITING=true
     depends_on:
       - etcd
+      - redis
     volumes:
       - ./schemas:/app/schemas:ro
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: schema-registry-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
 
   # Optional: Prometheus for metrics
@@ -74,4 +86,5 @@ services:
 
 volumes:
   etcd_data:
+  redis_data:
   grafana_data:
