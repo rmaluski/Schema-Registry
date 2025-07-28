@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Schema Registry metrics
+  - job_name: "schema-registry"
+    static_configs:
+      - targets: ["schema-registry:9090"]
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+
+  # Etcd metrics (if available)
+  - job_name: "etcd"
+    static_configs:
+      - targets: ["etcd:2379"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
