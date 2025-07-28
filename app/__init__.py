@@ -1,1 +1,1 @@
-# Schema Registry Application Package 
+# Schema Registry Application Package
