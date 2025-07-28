@@ -1,0 +1,78 @@
+{
+  "id": "ticks_v1",
+  "schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Level-1 Tick Data",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp in ISO 8601 format"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Trading symbol"
+    },
+    "price": {
+      "type": "number",
+      "description": "Last traded price"
+    },
+    "size": {
+      "type": "integer",
+      "description": "Trade size"
+    },
+    "side": {
+      "type": "string",
+      "enum": ["B", "S"],
+      "description": "Trade side: B for buy, S for sell"
+    },
+    "exchange_id": {
+      "type": "string",
+      "description": "Exchange identifier"
+    }
+  },
+  "required": ["ts", "symbol", "price", "size"],
+  "additionalProperties": false,
+  "arrow": {
+    "fields": [
+      {
+        "name": "ts",
+        "type": {
+          "name": "timestamp",
+          "unit": "us"
+        }
+      },
+      {
+        "name": "symbol",
+        "type": {
+          "name": "utf8"
+        }
+      },
+      {
+        "name": "price",
+        "type": {
+          "name": "float64"
+        }
+      },
+      {
+        "name": "size",
+        "type": {
+          "name": "int32"
+        }
+      },
+      {
+        "name": "side",
+        "type": {
+          "name": "utf8"
+        }
+      },
+      {
+        "name": "exchange_id",
+        "type": {
+          "name": "utf8"
+        }
+      }
+    ]
+  },
+  "version": "1.1.0"
+}

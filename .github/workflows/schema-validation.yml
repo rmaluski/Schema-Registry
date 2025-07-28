@@ -1,0 +1,106 @@
+name: Schema Validation & Diff
+
+on:
+  pull_request:
+    paths:
+      - "schemas/**"
+      - ".github/workflows/schema-validation.yml"
+      - "scripts/**"
+
+jobs:
+  schema_validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for diffing
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jsonschema pydantic
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate all schemas
+        run: |
+          python scripts/validate_all.py schemas/
+
+      - name: Run schema diff
+        run: |
+          python scripts/diff_schemas.py ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
+
+      - name: Add PR labels
+        if: always()
+        run: |
+          if [ -f "schema_changes.json" ]; then
+            CHANGES=$(cat schema_changes.json)
+            if echo "$CHANGES" | jq -e '.breaking_changes | length > 0' > /dev/null; then
+              echo "::set-output name=label::schema:breaking"
+            else
+              echo "::set-output name=label::schema:compatible"
+            fi
+          fi
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (fs.existsSync('schema_changes.json')) {
+              const changes = JSON.parse(fs.readFileSync('schema_changes.json', 'utf8'));
+              
+              let comment = '## Schema Changes Detected\n\n';
+              
+              if (changes.breaking_changes && changes.breaking_changes.length > 0) {
+                comment += '⚠️ **BREAKING CHANGES DETECTED**\n\n';
+                comment += 'The following breaking changes were found:\n';
+                changes.breaking_changes.forEach(change => {
+                  comment += `- ${change}\n`;
+                });
+                comment += '\n**Action Required**: This PR must bump the MAJOR version number.\n';
+              } else {
+                comment += '✅ **Compatible Changes Only**\n\n';
+                if (changes.added_fields && changes.added_fields.length > 0) {
+                  comment += '**Added Fields**:\n';
+                  changes.added_fields.forEach(field => {
+                    comment += `- ${field}\n`;
+                  });
+                  comment += '\n';
+                }
+                if (changes.modified_fields && changes.modified_fields.length > 0) {
+                  comment += '**Modified Fields**:\n';
+                  changes.modified_fields.forEach(field => {
+                    comment += `- ${field}\n`;
+                  });
+                  comment += '\n';
+                }
+              }
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+      - name: Fail on breaking changes without major version bump
+        if: always()
+        run: |
+          if [ -f "schema_changes.json" ]; then
+            CHANGES=$(cat schema_changes.json)
+            if echo "$CHANGES" | jq -e '.breaking_changes | length > 0' > /dev/null; then
+              echo "Breaking changes detected. Please ensure the MAJOR version is bumped."
+              exit 1
+            fi
+          fi

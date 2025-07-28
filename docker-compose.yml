@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: schema-registry-etcd
+    environment:
+      ETCD_NAME: etcd0
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_INITIAL_CLUSTER: etcd0=http://etcd:2380
+      ETCD_INITIAL_CLUSTER_TOKEN: schema-registry-token
+      ETCD_INITIAL_CLUSTER_STATE: new
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    volumes:
+      - etcd_data:/etcd-data
+    command: etcd -data-dir=/etcd-data
+
+  schema-registry:
+    build: .
+    container_name: schema-registry
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    environment:
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      - etcd
+    volumes:
+      - ./schemas:/app/schemas:ro
+    restart: unless-stopped
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: schema-registry-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - schema-registry
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: schema-registry-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  etcd_data:
+  grafana_data:
